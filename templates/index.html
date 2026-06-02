@@ -601,7 +601,9 @@ async function submitForm() {
         discharge_destination:  document.getElementById('discharge_destination').value,
     };
 
-    // Validate
+    const errors = [];
+
+    // 1. Limitation: Presence Checks (Are fields empty?)
     const missing = [];
     if (!fields.age)                   missing.push('Age');
     if (!fields.gender)                missing.push('Gender');
@@ -613,10 +615,41 @@ async function submitForm() {
     if (!fields.discharge_destination) missing.push('Discharge Destination');
 
     if (missing.length > 0) {
-        errorBox.textContent = `⚠️ Please fill in: ${missing.join(', ')}`;
+        errors.push(`Missing required fields: ${missing.join(', ')}`);
+    }
+
+    // 2. Limitation: Boundary Checks (Enforcing realistic clinical limits)
+    if (fields.age && (fields.age < 0 || fields.age > 120)) {
+        errors.push('Age must be between 0 and 120.');
+    }
+    if (fields.bp_systolic && (fields.bp_systolic < 50 || fields.bp_systolic > 300)) {
+        errors.push('Systolic BP must be a valid clinical value (50-300).');
+    }
+    if (fields.bp_diastolic && (fields.bp_diastolic < 30 || fields.bp_diastolic > 200)) {
+        errors.push('Diastolic BP must be a valid clinical value (30-200).');
+    }
+    if (fields.cholesterol && (fields.cholesterol < 50 || fields.cholesterol > 600)) {
+        errors.push('Cholesterol must be a valid clinical value (50-600).');
+    }
+
+    // 3. Limitation: Relational Logic Checks
+    if (fields.bp_systolic && fields.bp_diastolic) {
+        // Convert to Numbers to prevent string concatenation/comparison bugs
+        const sys = Number(fields.bp_systolic);
+        const dia = Number(fields.bp_diastolic);
+        
+        if (dia >= sys) {
+            errors.push('Diastolic BP cannot be greater than or equal to Systolic BP.');
+        }
+    }
+
+    // Execution: Stop submission if limitations are triggered
+    if (errors.length > 0) {
+        // Format errors cleanly with line breaks for readability
+        errorBox.innerHTML = `⚠️ <b>Please resolve the following issues:</b><br><br>• ${errors.join('<br>• ')}`;
         errorBox.classList.add('visible');
         errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
+        return; // Halt the function
     }
 
     // Show spinner
